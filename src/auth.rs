@@ -3,7 +3,7 @@
 use crate::context::Push;
 use futures::future::FutureExt;
 use hyper::header::AUTHORIZATION;
-use hyper::service::Service;
+use tower::Service;
 use hyper::{HeaderMap, Request};
 pub use hyper_old_types::header::Authorization as Header;
 use hyper_old_types::header::Header as HeaderTrait;
@@ -12,6 +12,8 @@ use hyper_old_types::header::{Raw, Scheme};
 use std::collections::BTreeSet;
 use std::marker::PhantomData;
 use std::string::ToString;
+use std::task::Context;
+use std::task::Poll;
 
 /// Authorization scopes.
 #[derive(Clone, Debug, PartialEq)]
@@ -125,7 +127,11 @@ where
     type Response = AllowAllAuthenticator<Inner::Response, RC>;
     type Future = futures::future::BoxFuture<'static, Result<Self::Response, Self::Error>>;
 
-    fn call(&self, target: Target) -> Self::Future {
+    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.inner.poll_ready(cx)
+    }
+
+    fn call(&mut self, target: Target) -> Self::Future {
         let subject = self.subject.clone();
         Box::pin(
             self.inner
@@ -188,7 +194,11 @@ where
     type Error = T::Error;
     type Future = T::Future;
 
-    fn call(&self, req: (Request<B>, RC)) -> Self::Future {
+    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.inner.poll_ready(cx)
+    }
+
+    fn call(&mut self, req: (Request<B>, RC)) -> Self::Future {
         let (request, context) = req;
         let context = context.push(Some(Authorization {
             subject: self.subject.clone(),
@@ -228,7 +238,7 @@ mod tests {
     use crate::EmptyContext;
     use bytes::Bytes;
     use http_body_util::Full;
-    use hyper::service::Service;
+    use tower::Service;
     use hyper::Response;
 
     struct MakeTestService;
@@ -243,7 +253,11 @@ mod tests {
         type Error = ();
         type Future = futures::future::Ready<Result<Self::Response, Self::Error>>;
 
-        fn call(&self, _target: Target) -> Self::Future {
+        fn poll_ready(&mut self, _cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+            Poll::Ready(Ok(()))
+        }
+
+        fn call(&mut self, _target: Target) -> Self::Future {
             futures::future::ok(TestService)
         }
     }
@@ -255,7 +269,11 @@ mod tests {
         type Error = String;
         type Future = futures::future::BoxFuture<'static, Result<Self::Response, Self::Error>>;
 
-        fn call(&self, req: ReqWithAuth) -> Self::Future {
+        fn poll_ready(&mut self, _cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+            Poll::Ready(Ok(()))
+        }
+
+        fn call(&mut self, req: ReqWithAuth) -> Self::Future {
             Box::pin(async move {
                 let auth: &Option<Authorization> = req.1.get();
                 let expected = Some(Authorization {
@@ -277,10 +295,10 @@ mod tests {
     async fn test_make_service() {
         let make_svc = MakeTestService;
 
-        let a: MakeAllowAllAuthenticator<_, EmptyContext> =
+        let mut a: MakeAllowAllAuthenticator<_, EmptyContext> =
             MakeAllowAllAuthenticator::new(make_svc, "foo");
 
-        let service = a.call(&()).await.unwrap();
+        let mut service = a.call(&()).await.unwrap();
 
         let response = service
             .call((

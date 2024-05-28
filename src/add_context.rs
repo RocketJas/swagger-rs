@@ -5,6 +5,7 @@ use crate::{Push, XSpanIdString};
 use futures::future::FutureExt;
 use hyper::Request;
 use std::marker::PhantomData;
+use std::task::Poll;
 
 /// Middleware wrapper service, that should be used as the outermost layer in a
 /// stack of hyper services. Adds a context to a plain `hyper::Request` that can be
@@ -33,19 +34,23 @@ where
     }
 }
 
-impl<Inner, Context, Target> hyper::service::Service<Target>
+impl<Inner, Context, Target> tower::Service<Target>
     for AddContextMakeService<Inner, Context>
 where
     Context: Default + Push<XSpanIdString> + 'static + Send,
     Context::Result: Send + 'static,
-    Inner: hyper::service::Service<Target>,
+    Inner: tower::Service<Target>,
     Inner::Future: Send + 'static,
 {
     type Error = Inner::Error;
     type Response = AddContextService<Inner::Response, Context>;
     type Future = futures::future::BoxFuture<'static, Result<Self::Response, Self::Error>>;
 
-    fn call(&self, target: Target) -> Self::Future {
+    fn poll_ready(&mut self, cx: &mut std::task::Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.inner.poll_ready(cx)
+    }
+
+    fn call(&mut self, target: Target) -> Self::Future {
         Box::pin(
             self.inner
                 .call(target)
@@ -83,18 +88,25 @@ where
     }
 }
 
-impl<Inner, Context, Body> hyper::service::Service<Request<Body>>
+impl<Inner, Context, Body> tower::Service<Request<Body>>
     for AddContextService<Inner, Context>
 where
     Context: Default + Push<XSpanIdString> + Send + 'static,
     Context::Result: Send + 'static,
-    Inner: hyper::service::Service<(Request<Body>, Context::Result)>,
+    Inner: tower::Service<(Request<Body>, Context::Result)>,
 {
     type Response = Inner::Response;
     type Error = Inner::Error;
     type Future = Inner::Future;
 
-    fn call(&self, req: Request<Body>) -> Self::Future {
+    fn poll_ready(
+        &mut self,
+        context: &mut std::task::Context<'_>,
+    ) -> Poll<Result<(), Self::Error>> {
+        self.inner.poll_ready(context)
+    }
+
+    fn call(&mut self, req: Request<Body>) -> Self::Future {
         let x_span_id = XSpanIdString::get_or_generate(&req);
         let context = Context::default().push(x_span_id);
 

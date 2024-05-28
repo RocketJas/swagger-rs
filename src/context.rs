@@ -31,7 +31,7 @@ use std::pin::Pin;
 ///     marker: PhantomData<C>,
 /// }
 ///
-/// impl<C> hyper::service::Service<(hyper::Request<hyper::Body>, C)> for MyService<C>
+/// impl<C> tower::Service<(hyper::Request<hyper::Body>, C)> for MyService<C>
 ///     where C: Has<MyItem> + Send + 'static
 /// {
 ///     type Response = hyper::Response<hyper::Body>;
@@ -77,13 +77,13 @@ pub trait Has<T> {
 ///     marker: PhantomData<C>,
 /// }
 ///
-/// impl<T, C, D, E> hyper::service::Service<(hyper::Request<hyper::Body>, C)> for MiddlewareService<T, C>
+/// impl<T, C, D, E> tower::Service<(hyper::Request<hyper::Body>, C)> for MiddlewareService<T, C>
 ///     where
 ///         C: Pop<MyItem1, Result=D> + Send + 'static,
 ///         D: Pop<MyItem2, Result=E>,
 ///         E: Pop<MyItem3>,
 ///         E::Result: Send + 'static,
-///         T: hyper::service::Service<(hyper::Request<hyper::Body>, E::Result)>
+///         T: tower::Service<(hyper::Request<hyper::Body>, E::Result)>
 /// {
 ///     type Response = T::Response;
 ///     type Error = T::Error;
@@ -129,13 +129,13 @@ pub trait Pop<T> {
 ///     marker: PhantomData<C>,
 /// }
 ///
-/// impl<T, C, D, E> hyper::service::Service<(hyper::Request<hyper::Body>, C)> for MiddlewareService<T, C>
+/// impl<T, C, D, E> tower::Service<(hyper::Request<hyper::Body>, C)> for MiddlewareService<T, C>
 ///     where
 ///         C: Push<MyItem1, Result=D> + Send + 'static,
 ///         D: Push<MyItem2, Result=E>,
 ///         E: Push<MyItem3>,
 ///         E::Result: Send + 'static,
-///         T: hyper::service::Service<(hyper::Request<hyper::Body>, E::Result)>
+///         T: tower::Service<(hyper::Request<hyper::Body>, E::Result)>
 /// {
 ///     type Response = T::Response;
 ///     type Error = T::Error;
@@ -508,7 +508,7 @@ impl<T: Clone, C: Clone> Clone for ContextWrapper<T, C> {
 ///     marker: PhantomData<C>,
 /// }
 ///
-/// impl<T, C> hyper::service::Service<(hyper::Request<hyper::Body>, C)> for ExampleMiddleware<T, C>
+/// impl<T, C> tower::Service<(hyper::Request<hyper::Body>, C)> for ExampleMiddleware<T, C>
 ///     where
 ///         T: SwaggerService<hyper::Body, hyper::Body, C>,
 ///         C: Has<Option<AuthData>> +

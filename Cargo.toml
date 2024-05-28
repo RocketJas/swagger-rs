@@ -43,6 +43,7 @@ regex = { version = "1", optional = true }
 paste = { version = "1", optional = true }
 # import the new version of hyper 1 with all features enabled
 hyper = { version = "1", features = ["full"] }
+tower = { version = "0.4", features = ["full"] }
 slog = { version = "2", features = [
     "max_level_trace",
     "release_max_level_debug",
