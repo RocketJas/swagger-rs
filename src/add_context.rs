@@ -34,12 +34,12 @@ where
     }
 }
 
-impl<Inner, Context, Target> hyper::service::Service<Target>
+impl<Inner, Context, Target> tower::Service<Target>
     for AddContextMakeService<Inner, Context>
 where
     Context: Default + Push<XSpanIdString> + 'static + Send,
     Context::Result: Send + 'static,
-    Inner: hyper::service::Service<Target>,
+    Inner: tower::Service<Target>,
     Inner::Future: Send + 'static,
 {
     type Error = Inner::Error;
@@ -88,12 +88,12 @@ where
     }
 }
 
-impl<Inner, Context, Body> hyper::service::Service<Request<Body>>
+impl<Inner, Context, Body> tower::Service<Request<Body>>
     for AddContextService<Inner, Context>
 where
     Context: Default + Push<XSpanIdString> + Send + 'static,
     Context::Result: Send + 'static,
-    Inner: hyper::service::Service<(Request<Body>, Context::Result)>,
+    Inner: tower::Service<(Request<Body>, Context::Result)>,
 {
     type Response = Inner::Response;
     type Error = Inner::Error;

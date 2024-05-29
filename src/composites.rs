@@ -3,7 +3,7 @@
 //! Use by passing `hyper::server::MakeService` instances to a `CompositeMakeService`
 //! together with the base path for requests that should be handled by that service.
 use futures::future::{BoxFuture, FutureExt, TryFutureExt};
-use hyper::service::Service;
+use tower::Service;
 use hyper::{Request, Response, StatusCode};
 use std::fmt;
 use std::future::Future;

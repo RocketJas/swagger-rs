@@ -3,7 +3,7 @@
 use crate::context::Push;
 use futures::future::FutureExt;
 use hyper::header::AUTHORIZATION;
-use hyper::service::Service;
+use tower::Service;
 use hyper::{HeaderMap, Request};
 pub use hyper_old_types::header::Authorization as Header;
 use hyper_old_types::header::Header as HeaderTrait;
@@ -236,13 +236,15 @@ mod tests {
     use super::*;
     use crate::context::{ContextBuilder, Has};
     use crate::EmptyContext;
-    use hyper::service::Service;
-    use hyper::{Body, Response};
+    use bytes::Bytes;
+    use http_body_util::Full;
+    use tower::Service;
+    use hyper::Response;
 
     struct MakeTestService;
 
     type ReqWithAuth = (
-        Request<Body>,
+        Request<Full<Bytes>>,
         ContextBuilder<Option<Authorization>, EmptyContext>,
     );
 
@@ -263,7 +265,7 @@ mod tests {
     struct TestService;
 
     impl Service<ReqWithAuth> for TestService {
-        type Response = Response<Body>;
+        type Response = Response<Full<Bytes>>;
         type Error = String;
         type Future = futures::future::BoxFuture<'static, Result<Self::Response, Self::Error>>;
 
@@ -281,7 +283,7 @@ mod tests {
                 });
 
                 if *auth == expected {
-                    Ok(Response::new(Body::empty()))
+                    Ok(Response::new(Full::default()))
                 } else {
                     Err(format!("{:?} != {:?}", auth, expected))
                 }
@@ -301,7 +303,7 @@ mod tests {
         let response = service
             .call((
                 Request::get("http://localhost")
-                    .body(Body::empty())
+                    .body(Full::default())
                     .unwrap(),
                 EmptyContext::default(),
             ))

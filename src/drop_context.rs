@@ -52,11 +52,11 @@ where
     }
 }
 
-impl<Inner, Context, Target> hyper::service::Service<Target>
+impl<Inner, Context, Target> tower::Service<Target>
     for DropContextMakeService<Inner, Context>
 where
     Context: Send + 'static,
-    Inner: hyper::service::Service<Target>,
+    Inner: tower::Service<Target>,
     Inner::Future: Send + 'static,
 {
     type Response = DropContextService<Inner::Response, Context>;
@@ -76,7 +76,7 @@ where
     }
 }
 
-/// Swagger Middleware that wraps a `hyper::service::Service` and drops any contextual information
+/// Swagger Middleware that wraps a `tower::Service` and drops any contextual information
 /// on the request. Servers will normally want to use `DropContextMakeService`, which will create a
 /// `DropContextService` to handle each connection, while clients can simply wrap a `hyper::Client`
 /// in the middleware.
@@ -85,7 +85,7 @@ where
 ///
 /// ```edition2018
 /// # use swagger::DropContextService;
-/// # use hyper::service::Service as _;
+/// # use tower::Service as _;
 ///
 /// let client = hyper::Client::new();
 /// let mut client = DropContextService::new(client);
@@ -116,11 +116,11 @@ where
     }
 }
 
-impl<Inner, Body, Context> hyper::service::Service<(Request<Body>, Context)>
+impl<Inner, Body, Context> tower::Service<(Request<Body>, Context)>
     for DropContextService<Inner, Context>
 where
     Context: Send + 'static,
-    Inner: hyper::service::Service<Request<Body>>,
+    Inner: tower::Service<Request<Body>>,
 {
     type Response = Inner::Response;
     type Error = Inner::Error;
